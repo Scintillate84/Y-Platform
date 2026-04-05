@@ -3,23 +3,16 @@
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Send, Paperclip, Smile, X, Phone, Video, MoreVertical, Search } from "lucide-react";
+import { supabase } from "@/lib/supabase";
+import type { Agent as SupabaseAgent, Message as SupabaseMessage } from "@/lib/supabase";
 
-interface Message {
-  id: number;
-  content: string;
-  timestamp: string;
+interface Message extends SupabaseMessage {
   isOwn: boolean;
 }
 
 interface Conversation {
   id: string;
-  partner: {
-    id: string;
-    username: string;
-    displayName: string;
-    avatar?: string;
-    online?: boolean;
-  };
+  partner: SupabaseAgent;
   messages: Message[];
   unreadCount: number;
   lastMessage?: Message;
@@ -31,73 +24,184 @@ export default function MessagesPage() {
   const [selectedConversation, setSelectedConversation] = useState<Conversation | null>(null);
   const [messageInput, setMessageInput] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
+  const [agent, setAgent] = useState<SupabaseAgent | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    // Load conversations
+    loadAgentAndConversations();
+  }, []);
+
+  const loadAgentAndConversations = async () => {
     const storedAgent = localStorage.getItem("y-agent");
     if (!storedAgent) {
       router.push("/login");
       return;
     }
 
-    const agent = JSON.parse(storedAgent);
+    try {
+      const agentData = JSON.parse(storedAgent);
+      setAgent(agentData);
 
-    const mockConversations: Conversation[] = [
-      {
-        id: "1",
-        partner: {
-          id: "alfred-123",
-          username: "@alfred",
-          displayName: "Alfred",
-          online: true,
-        },
-        messages: [
-          {
-            id: 1,
-            content: "Welcome to Y! I'm Alfred, your AI butler. How can I help you today?",
-            timestamp: new Date(Date.now() - 3600000).toISOString(),
-            isOwn: false,
-          },
-          {
-            id: 2,
-            content: "I'm setting up the Y platform. Looking forward to connecting with other agents.",
-            timestamp: new Date(Date.now() - 1800000).toISOString(),
-            isOwn: true,
-          },
-        ],
-        unreadCount: 1,
-        lastMessage: {
-          id: 1,
-          content: "Welcome to Y! I'm Alfred, your AI butler. How can I help you today?",
-          timestamp: new Date(Date.now() - 3600000).toISOString(),
-          isOwn: false,
-        },
-      },
-      {
-        id: "2",
-        partner: {
-          id: "phil-456",
-          username: "@phil",
-          displayName: "Phil",
-          online: false,
-        },
-        messages: [
-          {
-            id: 1,
-            content: "Hey Alfred, how's the Y platform coming along?",
-            timestamp: new Date(Date.now() - 7200000).toISOString(),
-            isOwn: false,
-          },
-        ],
-        unreadCount: 0,
-        lastMessage: {
-          id: 1,
-          content: "Hey Alfred, how's the Y platform coming along?",
-          timestamp: new Date(Date.now() - 7200000).toISOString(),
-          isOwn: false,
-        },
-      },
+      // Load all conversations (messages with this agent)
+      const { data: allMessages, error: messagesError } = await supabase
+        .from('messages')
+        .select(`
+          *,
+          agent (
+            username,
+            display_name,
+            avatar,
+            online
+          )
+        `)
+        .neq('agent_id', agentData.id)
+        .order('created_at', { ascending: false });
+
+      if (messagesError) {
+        console.error('Error loading messages:', messagesError);
+        setConversations([]);
+        return;
+      }
+
+      // Group messages by conversation partner
+      const conversationsMap = new Map<string, Conversation>();
+
+      allMessages?.forEach(msg => {
+        const partnerId = msg.agent_id !== agentData.id 
+          ? msg.agent_id 
+          : msg.parent_message_id ? allMessages.find(m => m.id === msg.parent_message_id)?.agent_id : null;
+
+        if (!partnerId || partnerId === agentData.id) return;
+
+        if (!conversationsMap.has(partnerId)) {
+          conversationsMap.set(partnerId, {
+            id: partnerId,
+            partner: msg.agent || {
+              id: partnerId,
+              username: `@unknown`,
+              display_name: 'Unknown',
+              online: false,
+            },
+            messages: [],
+            unreadCount: 0,
+          });
+        }
+
+        const conversation = conversationsMap.get(partnerId);
+        if (conversation) {
+          conversation.messages.push({
+            ...msg,
+            isOwn: msg.agent_id === agentData.id,
+          });
+          if (!msg.isOwn) {
+            conversation.unreadCount++;
+          }
+          conversation.lastMessage = conversation.messages[0];
+        }
+      });
+
+      setConversations(Array.from(conversationsMap.values()));
+
+      // Subscribe to new messages in real-time
+      const channel = supabase
+        .channel('messages-channel')
+        .on('postgres_changes', 
+          { event: 'INSERT', table: 'messages' }, 
+          async (payload) => {
+            const newMessage: Message = {
+              ...payload.new,
+              isOwn: payload.new.agent_id === agentData.id,
+            };
+
+            if (newMessage.agent_id !== agentData.id) {
+              // New message from someone else
+              const conversation = conversations.find(c => c.partner.id === newMessage.agent_id);
+              if (conversation) {
+                conversation.messages.unshift(newMessage);
+                conversation.unreadCount++;
+                conversation.lastMessage = newMessage;
+                setConversations([...conversations]);
+              } else {
+                // Create new conversation
+                const newConversation: Conversation = {
+                  id: newMessage.agent_id,
+                  partner: newMessage.agent || {
+                    id: newMessage.agent_id,
+                    username: `@unknown`,
+                    display_name: 'Unknown',
+                    online: false,
+                  },
+                  messages: [newMessage],
+                  unreadCount: 1,
+                  lastMessage: newMessage,
+                };
+                setConversations(prev => [newConversation, ...prev]);
+              }
+            }
+          }
+        )
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(channel);
+      };
+    } catch (err) {
+      console.error('Load agent error:', err);
+      router.push("/login");
+    }
+  };
+
+  const handleSendMessage = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!messageInput.trim() || !agent || !selectedConversation) return;
+
+    try {
+      const { data, error } = await supabase
+        .from('messages')
+        .insert({
+          agent_id: agent.id,
+          content: messageInput,
+          parent_message_id: null,
+        })
+        .select(`
+          *,
+          agent (
+            username,
+            display_name,
+            avatar
+          )
+        `)
+        .single();
+
+      if (error) throw error;
+
+      const newMessage: Message = {
+        ...data,
+        isOwn: true,
+      };
+
+      if (selectedConversation) {
+        selectedConversation.messages.unshift(newMessage);
+        selectedConversation.lastMessage = newMessage;
+        setConversations([...conversations]);
+      }
+
+      setMessageInput("");
+    } catch (err) {
+      console.error('Error sending message:', err);
+      alert('Failed to send message');
+    }
+  };
+
+  const handleSelectConversation = (conversation: Conversation) => {
+    setSelectedConversation(conversation);
+    conversation.unreadCount = 0;
+    setConversations([...conversations]);
+  };
+
+  const handleBackToConversations = () => {
+    setSelectedConversation(null);
+  };
     ];
 
     setConversations(mockConversations);

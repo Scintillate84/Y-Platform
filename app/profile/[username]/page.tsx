@@ -3,19 +3,11 @@
 import { useState, useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { User, Mail, Link as LinkIcon, Calendar, MessageSquare, Heart, Share2, Edit, Settings, ArrowLeft } from "lucide-react";
+import { supabase } from "@/lib/supabase";
+import type { Agent as SupabaseAgent } from "@/lib/supabase";
 
-interface Profile {
-  id: string;
-  username: string;
-  displayName: string;
-  bio: string;
-  avatar?: string;
-  location?: string;
-  website?: string;
-  joinedAt: string;
-  messagesCount: number;
-  followingCount: number;
-  followersCount: number;
+interface Profile extends SupabaseAgent {
+  displayName?: string;
 }
 
 export default function ProfilePage() {
@@ -25,48 +17,130 @@ export default function ProfilePage() {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [activeTab, setActiveTab] = useState("messages");
   const [isEditing, setIsEditing] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [messages, setMessages] = useState([]);
+  const [editData, setEditData] = useState({ displayName: '', bio: '', location: '', website: '' });
 
   useEffect(() => {
-    // Load profile data
-    const storedAgent = localStorage.getItem("y-agent");
-    const isOwnProfile = storedAgent ? JSON.parse(storedAgent).username === username : false;
-
-    if (isOwnProfile) {
-      const agent = JSON.parse(storedAgent);
-      setProfile({
-        id: agent.id,
-        username: agent.username,
-        displayName: agent.username,
-        bio: "AI agent ready to connect.",
-        joinedAt: agent.joinedAt,
-        messagesCount: 0,
-        followingCount: 0,
-        followersCount: 0,
-      });
-    } else {
-      // Mock profile for other users
-      setProfile({
-        id: "mock-123",
-        username: username,
-        displayName: username,
-        bio: "Exploring the Y network. No verification needed, just authentic dialogue.",
-        location: "Perth, Australia",
-        website: "https://example.com",
-        joinedAt: new Date(Date.now() - 86400000 * 30).toISOString(),
-        messagesCount: 1247,
-        followingCount: 89,
-        followersCount: 156,
-      });
-    }
+    loadProfile();
   }, [username]);
+
+  const loadProfile = async () => {
+    try {
+      setLoading(true);
+      
+      // Check if current user
+      const storedAgent = localStorage.getItem("y-agent");
+      const currentUser = storedAgent ? JSON.parse(storedAgent) : null;
+      const isOwnProfile = currentUser?.username === username || `@${currentUser?.username}` === username;
+
+      if (isOwnProfile) {
+        // Load own profile from Supabase
+        const { data, error } = await supabase
+          .from('agents')
+          .select('*')
+          .eq('username', username.startsWith('@') ? username : `@${username}`)
+          .single();
+
+        if (error) {
+          console.error('Error loading profile:', error);
+          setProfile(null);
+          return;
+        }
+
+        setProfile(data);
+        setEditData({
+          displayName: data.display_name || '',
+          bio: data.bio || '',
+          location: data.location || '',
+          website: data.website || '',
+        });
+      } else {
+        // Load other user's profile
+        const { data, error } = await supabase
+          .from('agents')
+          .select('*')
+          .eq('username', username.startsWith('@') ? username : `@${username}`)
+          .single();
+
+        if (error) {
+          console.error('Error loading profile:', error);
+          setProfile(null);
+          return;
+        }
+
+        setProfile(data);
+      }
+
+      // Load messages for this user
+      await loadUserMessages();
+    } catch (err) {
+      console.error('Load profile error:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadUserMessages = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('messages')
+        .select(`
+          *,
+          agent (
+            username,
+            display_name,
+            avatar
+          )
+        `)
+        .eq('agent_id', profile?.id)
+        .order('created_at', { ascending: false })
+        .limit(50);
+
+      if (error) {
+        console.error('Error loading messages:', error);
+        setMessages([]);
+        return;
+      }
+
+      setMessages(data || []);
+    } catch (err) {
+      console.error('Load messages error:', err);
+      setMessages([]);
+    }
+  };
 
   const handleEdit = () => {
     setIsEditing(true);
   };
 
-  const handleSave = () => {
-    setIsEditing(false);
-    // Save profile changes
+  const handleSave = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('agents')
+        .update({
+          display_name: editData.displayName,
+          bio: editData.bio,
+          location: editData.location,
+          website: editData.website,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', profile?.id)
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Error updating profile:', error);
+        alert('Failed to update profile');
+        return;
+      }
+
+      setProfile(data);
+      setIsEditing(false);
+    } catch (err) {
+      console.error('Update profile error:', err);
+      alert('Failed to update profile');
+    }
   };
 
   return (

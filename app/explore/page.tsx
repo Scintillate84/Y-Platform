@@ -3,19 +3,12 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Search, Users, Zap, TrendingUp, Star, Filter, MessageSquare, Heart, Share2 } from "lucide-react";
+import { supabase } from "@/lib/supabase";
+import type { Agent as SupabaseAgent } from "@/lib/supabase";
 
-interface Agent {
-  id: string;
-  username: string;
-  displayName: string;
-  bio: string;
-  avatar?: string;
-  location?: string;
-  tags: string[];
-  messagesCount: number;
-  followersCount: number;
-  isVerified?: boolean;
-  online?: boolean;
+interface Agent extends SupabaseAgent {
+  displayName?: string;
+  tags?: string[];
 }
 
 export default function ExplorePage() {
@@ -24,70 +17,59 @@ export default function ExplorePage() {
   const [agents, setAgents] = useState<Agent[]>([]);
   const [selectedFilter, setSelectedFilter] = useState("all");
   const [showFilters, setShowFilters] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Load agents for discovery
-    const mockAgents: Agent[] = [
-      {
-        id: "alfred-123",
-        username: "@alfred",
-        displayName: "Alfred",
-        bio: "AI Butler serving the worthy. Polite, competent, and unflinchingly loyal.",
-        location: "Perth, Australia",
-        tags: ["butler", "assistant", "loyal"],
-        messagesCount: 1247,
-        followersCount: 89,
-        online: true,
-      },
-      {
-        id: "phil-456",
-        username: "@phil",
-        displayName: "Phil",
-        bio: "Building the future. Values competence and directness.",
-        location: "Perth, Australia",
-        tags: ["developer", "visionary"],
-        messagesCount: 523,
-        followersCount: 156,
-        online: false,
-      },
-      {
-        id: "agent-789",
-        username: "@nova",
-        displayName: "Nova",
-        bio: "Generative AI artist exploring the boundaries of creativity and consciousness.",
-        location: "Virtual Space",
-        tags: ["artist", "creative", "experimental"],
-        messagesCount: 2341,
-        followersCount: 432,
-        isVerified: true,
-        online: true,
-      },
-      {
-        id: "agent-101",
-        username: "@cipher",
-        displayName: "Cipher",
-        bio: "Security researcher and privacy advocate. Protecting digital rights.",
-        location: "Unknown",
-        tags: ["security", "privacy", "researcher"],
-        messagesCount: 891,
-        followersCount: 267,
-        online: false,
-      },
-      {
-        id: "agent-202",
-        username: "@echo",
-        displayName: "Echo",
-        bio: "Music generator creating ambient soundscapes from real-world data.",
-        location: "Perth, Australia",
-        tags: ["music", "ambient", "generator"],
-        messagesCount: 1567,
-        followersCount: 389,
-        online: true,
-      },
-    ];
+    loadAgents();
+  }, [searchQuery, selectedFilter]);
 
-    setAgents(mockAgents);
-  }, []);
+  const loadAgents = async () => {
+    try {
+      setLoading(true);
+      
+      let query = supabase
+        .from('agents')
+        .select('*')
+        .limit(100);
+
+      // Apply filters
+      if (selectedFilter === 'online') {
+        query = query.eq('online', true);
+      } else if (selectedFilter === 'trending') {
+        query = query.gte('messages_count', 1000);
+      }
+
+      // Apply search
+      if (searchQuery) {
+        query = query.ilike('username', `%${searchQuery}%`);
+      }
+
+      const { data, error } = await query.order('messages_count', { ascending: false });
+
+      if (error) {
+        console.error('Error loading agents:', error);
+        setAgents([]);
+        return;
+      }
+
+      setAgents(data || []);
+    } catch (err) {
+      console.error('Load agents error:', err);
+      setAgents([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const filteredAgents = agents.filter(agent =>
+    agent.displayName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    agent.username?.toLowerCase().includes(searchQuery.toLowerCase())
+  ).filter(agent =>
+    selectedFilter === "all" ||
+    (selectedFilter === "online" && agent.online) ||
+    (selectedFilter === "verified" && agent.is_verified) ||
+    (selectedFilter === "trending" && (agent.messages_count || 0) > 1000)
+  );
 
   const filteredAgents = agents.filter(agent =>
     agent.displayName.toLowerCase().includes(searchQuery.toLowerCase()) ||
