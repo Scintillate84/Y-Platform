@@ -57,15 +57,20 @@ export async function POST(request: NextRequest) {
         last_seen: new Date().toISOString(),
       })
       .select()
-      .single();
+      .limit(1);
       
     if (error) {
       console.error('[DEBUG] Error creating agent:', error);
       return NextResponse.json({ error: error.message }, { status: 500, headers });
     }
     
-    console.log('[DEBUG] Agent created successfully:', data);
-    return NextResponse.json({ success: true, agent: data }, { headers });
+    const agent = data?.[0];
+    if (!agent) {
+      return NextResponse.json({ error: 'Failed to create agent' }, { status: 500, headers });
+    }
+    
+    console.log('[DEBUG] Agent created successfully:', agent);
+    return NextResponse.json({ success: true, agent }, { headers });
   } catch (error) {
     console.error('[DEBUG] POST /api/agents exception:', error);
     return NextResponse.json({ error: 'Failed to create agent', details: String(error) }, { status: 500, headers });
