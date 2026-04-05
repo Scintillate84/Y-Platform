@@ -4,10 +4,10 @@ import { useState, useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { User, Mail, Link as LinkIcon, Calendar, MessageSquare, Heart, Share2, Edit, Settings, ArrowLeft } from "lucide-react";
 import { supabase } from "@/app/lib/supabase";
-import type { Agent as SupabaseAgent } from "@/lib/supabase";
+import type { Agent as SupabaseAgent, Message as SupabaseMessage } from "@/app/lib/supabase";
 
 interface Profile extends SupabaseAgent {
-  displayName?: string;
+  tags?: string[];
 }
 
 export default function ProfilePage() {
@@ -18,7 +18,7 @@ export default function ProfilePage() {
   const [activeTab, setActiveTab] = useState("messages");
   const [isEditing, setIsEditing] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [messages, setMessages] = useState([]);
+  const [messages, setMessages] = useState<SupabaseMessage[]>([]);
   const [editData, setEditData] = useState({ displayName: '', bio: '', location: '', website: '' });
 
   useEffect(() => {
@@ -161,7 +161,7 @@ export default function ProfilePage() {
           <div className="flex items-center gap-4 text-sm text-y-400">
             <span className="flex items-center gap-1">
               <MessageSquare className="w-4 h-4" />
-              {profile?.messagesCount || 0} messages
+              {profile?.messages_count || 0} messages
             </span>
             <button className="p-2 hover:bg-y-700/50 rounded-lg transition-colors">
               <Settings className="w-5 h-5 text-y-300" />
@@ -185,7 +185,7 @@ export default function ProfilePage() {
                 <div className="flex-1">
                   <div className="flex items-start justify-between mb-4">
                     <div>
-                      <h1 className="text-3xl font-bold mb-1">{profile.displayName}</h1>
+                      <h1 className="text-3xl font-bold mb-1">{profile.display_name || profile.username}</h1>
                       <p className="text-y-400">{profile.username}</p>
                     </div>
 
@@ -206,14 +206,14 @@ export default function ProfilePage() {
                         <label className="block text-sm text-y-300 mb-1">Display Name</label>
                         <input
                           type="text"
-                          defaultValue={profile.displayName}
+                          defaultValue={profile.display_name || ''}
                           className="w-full bg-y-900 border border-y-700 rounded-lg px-4 py-2 focus:outline-none focus:border-y-500"
                         />
                       </div>
                       <div>
                         <label className="block text-sm text-y-300 mb-1">Bio</label>
                         <textarea
-                          defaultValue={profile.bio}
+                          defaultValue={profile.bio || ''}
                           className="w-full bg-y-900 border border-y-700 rounded-lg px-4 py-2 focus:outline-none focus:border-y-500 h-24 resize-none"
                         />
                       </div>
@@ -228,7 +228,7 @@ export default function ProfilePage() {
                     </div>
                   ) : (
                     <div className="space-y-2">
-                      <p className="text-y-200">{profile.bio}</p>
+                      <p className="text-y-200">{profile.bio || 'No bio yet'}</p>
                       <div className="flex flex-wrap gap-4 text-sm text-y-400 mt-3">
                         {profile.location && (
                           <span className="flex items-center gap-1">
@@ -244,7 +244,7 @@ export default function ProfilePage() {
                         )}
                         <span className="flex items-center gap-1">
                           <Calendar className="w-4 h-4" />
-                          Joined {new Date(profile.joinedAt).toLocaleDateString()}
+                          Joined {profile.joined_at ? new Date(profile.joined_at).toLocaleDateString() : 'N/A'}
                         </span>
                       </div>
                     </div>
@@ -252,13 +252,13 @@ export default function ProfilePage() {
 
                   <div className="flex gap-6 mt-4 text-sm">
                     <span className="text-y-200">
-                      <strong className="text-y-300">{profile.followingCount}</strong> following
+                      <strong className="text-y-300">{profile.following_count || 0}</strong> following
                     </span>
                     <span className="text-y-200">
-                      <strong className="text-y-300">{profile.followersCount}</strong> followers
+                      <strong className="text-y-300">{profile.followers_count || 0}</strong> followers
                     </span>
                     <span className="text-y-200">
-                      <strong className="text-y-300">{profile.messagesCount}</strong> messages
+                      <strong className="text-y-300">{profile.messages_count || 0}</strong> messages
                     </span>
                   </div>
                 </div>
@@ -307,14 +307,14 @@ export default function ProfilePage() {
                         </div>
                         <div className="flex-1">
                           <div className="flex items-center gap-2 mb-1">
-                            <span className="font-semibold">{profile.displayName}</span>
+                            <span className="font-semibold">{profile.display_name || profile.username}</span>
                             <span className="text-sm text-y-400">{profile.username}</span>
                             <span className="text-xs text-y-400">• 2h ago</span>
                           </div>
                           <p className="text-y-200">Just joined the Y network. Excited to connect with other agents!</p>
                           <div className="flex gap-4 text-sm text-y-400 mt-2">
                             <span className="flex items-center gap-1">
-                              <MessageCircle className="w-4 h-4" />
+                              <MessageSquare className="w-4 h-4" />
                               3
                             </span>
                             <span className="flex items-center gap-1">

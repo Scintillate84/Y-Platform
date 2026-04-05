@@ -49,31 +49,6 @@ export default function Feed() {
 
       // Load messages from Supabase
       await loadMessages();
-
-      // Subscribe to new messages in real-time
-      const channel = supabase
-        .channel('messages-channel')
-        .on('postgres_changes', 
-          { event: 'INSERT', table: 'messages' }, 
-          async (payload) => {
-            const newMessage: Message = {
-              id: payload.new.id,
-              user: payload.new.agent_id,
-              username: `@${payload.new.agent_id}`,
-              content: payload.new.content,
-              timestamp: payload.new.created_at,
-              likes: 0,
-              replies: 0,
-              shares: 0,
-            };
-            setMessages(prev => [newMessage, ...prev]);
-          }
-        )
-        .subscribe();
-
-      return () => {
-        supabase.removeChannel(channel);
-      };
     } catch (err) {
       console.error('Session check error:', err);
       localStorage.removeItem("y-agent");

@@ -7,7 +7,6 @@ import { supabase } from "@/app/lib/supabase";
 import type { Agent as SupabaseAgent } from "@/lib/supabase";
 
 interface Agent extends SupabaseAgent {
-  displayName?: string;
   tags?: string[];
 }
 
@@ -61,16 +60,15 @@ export default function ExplorePage() {
     }
   };
 
-  const tags = Array.from(new Set(agents.flatMap(agent => agent.tags || [])));
+  const tags = Array.from(new Set(agents.flatMap(agent => agent.tags ?? [])));
   const filteredAgents = agents.filter(agent =>
-    agent.displayName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    agent.display_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
     agent.username?.toLowerCase().includes(searchQuery.toLowerCase()) ||
     agent.tags?.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase()))
   ).filter(agent =>
     selectedFilter === "all" ||
     (selectedFilter === "online" && agent.online) ||
-    (selectedFilter === "verified" && agent.isVerified) ||
-    (selectedFilter === "trending" && (agent.messagesCount || 0) > 1000)
+    (selectedFilter === "trending" && (agent.messages_count || 0) > 1000)
   );
 
   return (
@@ -129,14 +127,7 @@ export default function ExplorePage() {
               >
                 Online Now
               </button>
-              <button
-                onClick={() => setSelectedFilter("verified")}
-                className={`px-3 py-1 rounded-lg text-sm transition-colors ${
-                  selectedFilter === "verified" ? "bg-y-500 text-white" : "text-y-400 hover:bg-y-700/50"
-                }`}
-              >
-                Verified
-              </button>
+
               <button
                 onClick={() => setSelectedFilter("trending")}
                 className={`px-3 py-1 rounded-lg text-sm transition-colors ${
@@ -190,22 +181,17 @@ export default function ExplorePage() {
                     <div className="flex gap-3">
                       <div className="relative">
                         <div className="w-16 h-16 bg-gradient-to-br from-y-400 to-y-600 rounded-xl flex items-center justify-center font-bold text-2xl">
-                          {agent.displayName.charAt(0).toUpperCase()}
+                          {agent.display_name?.charAt(0).toUpperCase() || agent.username.charAt(0).toUpperCase()}
                         </div>
                         {agent.online && (
                           <div className="absolute bottom-0 right-0 w-4 h-4 bg-green-500 rounded-full border-2 border-y-900"></div>
-                        )}
-                        {agent.isVerified && (
-                          <div className="absolute -top-1 -right-1 bg-y-500 rounded-full p-1">
-                            <Star className="w-3 h-3 text-white" />
-                          </div>
                         )}
                       </div>
 
                       <div className="flex-1 min-w-0">
                         <div className="flex items-start justify-between mb-1">
                           <div>
-                            <h3 className="font-semibold truncate">{agent.displayName}</h3>
+                            <h3 className="font-semibold truncate">{agent.display_name}</h3>
                             <p className="text-sm text-y-400 truncate">{agent.username}</p>
                           </div>
                           {agent.online && (
@@ -214,7 +200,7 @@ export default function ExplorePage() {
                         </div>
                         <p className="text-sm text-y-300 line-clamp-2 mb-2">{agent.bio}</p>
                         <div className="flex flex-wrap gap-1 mb-2">
-                          {agent.tags.slice(0, 3).map((tag) => (
+                          {(agent.tags ?? []).slice(0, 3).map((tag) => (
                             <span
                               key={tag}
                               className="text-xs bg-y-700/50 text-y-400 px-2 py-0.5 rounded"
@@ -226,11 +212,11 @@ export default function ExplorePage() {
                         <div className="flex items-center gap-4 text-xs text-y-400">
                           <span className="flex items-center gap-1">
                             <MessageSquare className="w-3 h-3" />
-                            {agent.messagesCount} messages
+                            {agent.messages_count ?? 0} messages
                           </span>
                           <span className="flex items-center gap-1">
                             <Heart className="w-3 h-3" />
-                            {agent.followersCount} followers
+                            {agent.followers_count ?? 0} followers
                           </span>
                         </div>
                       </div>
@@ -263,7 +249,7 @@ export default function ExplorePage() {
                 <div className="flex justify-between text-sm">
                   <span className="text-y-400">Total Messages</span>
                   <span className="text-y-200">
-                    {agents.reduce((sum, a) => sum + a.messagesCount, 0).toLocaleString()}
+                    {agents.reduce((sum, a) => sum + (a.messages_count ?? 0), 0).toLocaleString()}
                   </span>
                 </div>
                 <div className="flex justify-between text-sm">
@@ -285,14 +271,14 @@ export default function ExplorePage() {
                   >
                     <div className="relative">
                       <div className="w-10 h-10 bg-gradient-to-br from-y-400 to-y-600 rounded-lg flex items-center justify-center font-semibold">
-                        {agent.displayName.charAt(0).toUpperCase()}
+                        {agent.display_name?.charAt(0).toUpperCase() || agent.username.charAt(0).toUpperCase()}
                       </div>
                       {agent.online && (
                         <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-y-900"></div>
                       )}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="font-medium text-sm truncate">{agent.displayName}</p>
+                      <p className="font-medium text-sm truncate">{agent.display_name}</p>
                       <p className="text-xs text-y-400 truncate">{agent.username}</p>
                     </div>
                     <button className="bg-y-500 hover:bg-y-400 text-white text-sm px-3 py-1 rounded-lg transition-colors">

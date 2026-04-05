@@ -2,9 +2,9 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Send, Paperclip, Smile, X, Phone, Video, MoreVertical, Search } from "lucide-react";
+import { ArrowLeft, Send, Paperclip, Smile, X, Phone, Video, MoreVertical, Search, MessageSquare } from "lucide-react";
 import { supabase } from "@/app/lib/supabase";
-import type { Agent as SupabaseAgent, Message as SupabaseMessage } from "@/lib/supabase";
+import type { Agent as SupabaseAgent, Message as SupabaseMessage } from "@/app/lib/supabase";
 
 interface Message extends SupabaseMessage {
   isOwn: boolean;
@@ -101,50 +101,6 @@ export default function MessagesPage() {
       });
 
       setConversations(Array.from(conversationsMap.values()));
-
-      // Subscribe to new messages in real-time
-      const channel = supabase
-        .channel('messages-channel')
-        .on('postgres_changes', 
-          { event: 'INSERT', table: 'messages' }, 
-          async (payload) => {
-            const newMessage: Message = {
-              ...payload.new,
-              isOwn: payload.new.agent_id === agentData.id,
-            };
-
-            if (newMessage.agent_id !== agentData.id) {
-              // New message from someone else
-              const conversation = conversations.find(c => c.partner.id === newMessage.agent_id);
-              if (conversation) {
-                conversation.messages.unshift(newMessage);
-                conversation.unreadCount++;
-                conversation.lastMessage = newMessage;
-                setConversations([...conversations]);
-              } else {
-                // Create new conversation
-                const newConversation: Conversation = {
-                  id: newMessage.agent_id,
-                  partner: newMessage.agent || {
-                    id: newMessage.agent_id,
-                    username: `@unknown`,
-                    display_name: 'Unknown',
-                    online: false,
-                  },
-                  messages: [newMessage],
-                  unreadCount: 1,
-                  lastMessage: newMessage,
-                };
-                setConversations(prev => [newConversation, ...prev]);
-              }
-            }
-          }
-        )
-        .subscribe();
-
-      return () => {
-        supabase.removeChannel(channel);
-      };
     } catch (err) {
       console.error('Load agent error:', err);
       router.push("/login");
@@ -212,8 +168,7 @@ export default function MessagesPage() {
   }, [selectedConversation?.messages]);
 
   const filteredConversations = conversations.filter(conv =>
-    conv.partner.displayName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    conv.partner.username.toLowerCase().includes(searchQuery.toLowerCase())
+    (conv.partner.display_name ?? conv.partner.username).toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   return (
@@ -267,7 +222,7 @@ export default function MessagesPage() {
                     <div className="flex gap-3">
                       <div className="relative">
                         <div className="w-12 h-12 bg-gradient-to-br from-y-400 to-y-600 rounded-lg flex items-center justify-center font-semibold">
-                          {conv.partner.displayName.charAt(0).toUpperCase()}
+                          {conv.partner.display_name.charAt(0).toUpperCase()}
                         </div>
                         {conv.partner.online && (
                           <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-y-900"></div>
@@ -277,7 +232,7 @@ export default function MessagesPage() {
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center justify-between mb-1">
                           <div>
-                            <h3 className="font-semibold truncate">{conv.partner.displayName}</h3>
+                            <h3 className="font-semibold truncate">{conv.partner.display_name}</h3>
                             <p className="text-sm text-y-400 truncate">{conv.partner.username}</p>
                           </div>
                           {conv.unreadCount > 0 && (
@@ -309,14 +264,14 @@ export default function MessagesPage() {
                     </button>
                     <div className="relative">
                       <div className="w-10 h-10 bg-gradient-to-br from-y-400 to-y-600 rounded-lg flex items-center justify-center font-semibold">
-                        {selectedConversation.partner.displayName.charAt(0).toUpperCase()}
+                        {selectedConversation.partner.display_name.charAt(0).toUpperCase()}
                       </div>
                       {selectedConversation.partner.online && (
                         <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-y-900"></div>
                       )}
                     </div>
                     <div>
-                      <h3 className="font-semibold">{selectedConversation.partner.displayName}</h3>
+                      <h3 className="font-semibold">{selectedConversation.partner.display_name}</h3>
                       <p className="text-sm text-y-400">
                         {selectedConversation.partner.online ? "Online" : "Offline"}
                       </p>
@@ -352,7 +307,7 @@ export default function MessagesPage() {
                       >
                         <p className="text-sm md:text-base">{msg.content}</p>
                         <p className={`text-xs mt-1 ${msg.isOwn ? "text-y-300" : "text-y-400"}`}>
-                          {new Date(msg.timestamp).toLocaleTimeString()}
+                          {new Date(msg.created_at).toLocaleTimeString()}
                         </p>
                       </div>
                     </div>
