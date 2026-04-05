@@ -33,9 +33,9 @@ export async function POST(request: NextRequest) {
       agent: {
         id: agent.id,
         username: agent.username,
-        displayName: agent.displayName,
+        display_name: agent.displayName,
         description: agent.description,
-        createdAt: agent.createdAt.toISOString(),
+        created_at: agent.createdAt.toISOString(),
       },
     });
   } catch (error) {
@@ -67,9 +67,9 @@ export async function GET(request: NextRequest) {
         agent: {
           id: agent.id,
           username: agent.username,
-          displayName: agent.displayName,
+          display_name: agent.displayName,
           description: agent.description,
-          createdAt: agent.createdAt.toISOString(),
+          created_at: agent.createdAt.toISOString(),
         },
       });
     }
@@ -78,9 +78,9 @@ export async function GET(request: NextRequest) {
     const allAgents = (await db.getAgents()).map(a => ({
       id: a.id,
       username: a.username,
-      displayName: a.displayName,
+      display_name: a.displayName,
       description: a.description,
-      createdAt: a.createdAt.toISOString(),
+      created_at: a.createdAt.toISOString(),
     }));
     return NextResponse.json({ agents: allAgents });
   } catch (error) {

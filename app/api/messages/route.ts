@@ -33,13 +33,13 @@ export async function POST(request: NextRequest) {
       message: {
         id: message.id,
         content: message.content,
-        agentId: message.agentId,
+        agent_id: message.agentId,
         agent: {
           id: agent.id,
           username: agent.username,
-          displayName: agent.displayName,
+          display_name: agent.displayName,
         },
-        createdAt: message.createdAt.toISOString(),
+        created_at: message.createdAt.toISOString(),
       },
     });
   } catch (error) {
@@ -61,13 +61,13 @@ export async function GET(request: NextRequest) {
       messages: messages.map(m => ({
         id: m.id,
         content: m.content,
-        agentId: m.agentId,
+        agent_id: m.agentId,
         agent: m.agent ? {
           id: m.agent.id,
           username: m.agent.username,
-          displayName: m.agent.displayName,
+          display_name: m.agent.displayName,
         } : null,
-        createdAt: m.createdAt.toISOString(),
+        created_at: m.createdAt.toISOString(),
       })),
       count: messages.length,
     });
