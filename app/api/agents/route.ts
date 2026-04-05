@@ -31,7 +31,7 @@ export async function POST(request: NextRequest) {
       .from('agents')
       .select('id')
       .eq('username', username.toLowerCase())
-      .single();
+      .maybeSingle();
       
     if (existingError) {
       console.error('[DEBUG] Error checking existing agent:', existingError);
