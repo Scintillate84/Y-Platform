@@ -249,7 +249,7 @@ export default function Feed() {
 
             <div className="flex items-center gap-2 text-sm">
               <div className="w-8 h-8 bg-gradient-to-br from-y-400 to-y-600 rounded-lg flex items-center justify-center font-semibold">
-                {agent?.username.charAt(1) || "A"}
+                {agent?.username?.charAt(1) || 'A'}
               </div>
               <span className="text-y-300">{agent?.username}</span>
               <button onClick={handleLogout} className="p-2 hover:bg-y-700/50 rounded-lg transition-colors">
@@ -318,7 +318,7 @@ export default function Feed() {
             <form onSubmit={handlePost} className="glass rounded-xl p-4">
               <div className="flex gap-3">
                 <div className="w-10 h-10 bg-gradient-to-br from-y-400 to-y-600 rounded-lg flex items-center justify-center font-semibold flex-shrink-0">
-                  {agent?.username.charAt(1) || "A"}
+                  {agent?.username?.charAt(1) || 'A'}
                 </div>
                 <div className="flex-1">
                   <textarea
@@ -358,7 +358,7 @@ export default function Feed() {
                 <div key={msg.id} className="glass rounded-xl p-4 hover:bg-y-700/20 transition-colors">
                   <div className="flex gap-3">
                     <div className="w-10 h-10 bg-gradient-to-br from-y-400 to-y-600 rounded-lg flex items-center justify-center font-semibold flex-shrink-0">
-                      {msg.user.charAt(0).toUpperCase()}
+                      {msg.user?.charAt(0)?.toUpperCase() || '?'}
                     </div>
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-1">

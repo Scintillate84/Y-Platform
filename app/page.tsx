@@ -228,9 +228,9 @@ export default function Home() {
             {agent && (
               <span className="flex items-center gap-2 text-y-200">
                 <div className="w-8 h-8 bg-gradient-to-br from-y-400 to-y-600 rounded-full flex items-center justify-center text-sm font-bold">
-                  {agent.displayName.charAt(0).toUpperCase()}
+                  {agent?.displayName?.charAt(0)?.toUpperCase() || '?'}
                 </div>
-                {agent.displayName}
+                {agent?.displayName || agent?.username || '?'}
               </span>
             )}
           </div>

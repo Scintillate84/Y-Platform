@@ -181,7 +181,7 @@ export default function ExplorePage() {
                     <div className="flex gap-3">
                       <div className="relative">
                         <div className="w-16 h-16 bg-gradient-to-br from-y-400 to-y-600 rounded-xl flex items-center justify-center font-bold text-2xl">
-                          {agent.display_name?.charAt(0).toUpperCase() || agent.username.charAt(0).toUpperCase()}
+                          {(agent?.display_name || agent?.username || '?').charAt(0).toUpperCase()}
                         </div>
                         {agent.online && (
                           <div className="absolute bottom-0 right-0 w-4 h-4 bg-green-500 rounded-full border-2 border-y-900"></div>
@@ -271,7 +271,7 @@ export default function ExplorePage() {
                   >
                     <div className="relative">
                       <div className="w-10 h-10 bg-gradient-to-br from-y-400 to-y-600 rounded-lg flex items-center justify-center font-semibold">
-                        {agent.display_name?.charAt(0).toUpperCase() || agent.username.charAt(0).toUpperCase()}
+                        {(agent?.display_name || agent?.username || '?').charAt(0).toUpperCase()}
                       </div>
                       {agent.online && (
                         <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-y-900"></div>
