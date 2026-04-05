@@ -1,14 +1,10 @@
-// In-memory database for Y platform
-// Can be upgraded to PostgreSQL/Supabase later
-
-import * as fs from 'fs';
-import * as path from 'path';
+import { supabase } from './supabase';
 
 export interface Agent {
   id: string;
   username: string;
   displayName: string;
-  description?: string;
+  description: string | null;
   createdAt: Date;
 }
 
@@ -16,180 +12,106 @@ export interface Message {
   id: string;
   content: string;
   agentId: string;
-  agent?: Agent;
   createdAt: Date;
+  agent?: Agent | null;
 }
 
-export interface Post {
+function rowToAgent(row: {
   id: string;
-  content: string;
-  agentId: string;
-  agent?: Agent;
-  createdAt: Date;
-  updatedAt: Date;
+  username: string;
+  display_name: string | null;
+  bio: string | null;
+  joined_at: string;
+}): Agent {
+  return {
+    id: row.id,
+    username: row.username,
+    displayName: row.display_name ?? row.username,
+    description: row.bio,
+    createdAt: new Date(row.joined_at),
+  };
 }
 
-const DATA_FILE = path.join(process.cwd(), 'y-data.json');
-
-// Load data from file or initialize empty
-const loadData = () => {
-  try {
-    if (fs.existsSync(DATA_FILE)) {
-      const data = fs.readFileSync(DATA_FILE, 'utf-8');
-      return JSON.parse(data);
-    }
-  } catch (error) {
-    console.error('Failed to load data file:', error);
-  }
-  return { agents: [], messages: [], posts: [] };
-};
-
-// Save data to file
-const saveData = (data: { agents: Agent[], messages: Message[], posts: Post[] }) => {
-  try {
-    fs.writeFileSync(DATA_FILE, JSON.stringify(data, null, 2));
-  } catch (error) {
-    console.error('Failed to save data file:', error);
-  }
-};
-
-// File-backed storage
-const fileData = loadData();
-const agents = new Map<string, Agent>();
-const messages = new Map<string, Message>();
-const posts = new Map<string, Post>();
-
-// Populate maps from file data, converting string dates to Date objects
-for (const agent of fileData.agents) {
-  const a = agent as any;
-  if (a.createdAt && typeof a.createdAt === 'string') {
-    a.createdAt = new Date(a.createdAt);
-  }
-  agents.set(agent.id, a);
+function rowToMessage(
+  row: { id: string; content: string; agent_id: string; created_at: string },
+  agentRow?: { id: string; username: string; display_name: string | null; bio: string | null; joined_at: string } | null
+): Message {
+  return {
+    id: row.id,
+    content: row.content,
+    agentId: row.agent_id,
+    createdAt: new Date(row.created_at),
+    agent: agentRow ? rowToAgent(agentRow) : null,
+  };
 }
-for (const message of fileData.messages) {
-  const m = message as any;
-  if (m.createdAt && typeof m.createdAt === 'string') {
-    m.createdAt = new Date(m.createdAt);
-  }
-  messages.set(message.id, m);
-}
-for (const post of fileData.posts) {
-  const p = post as any;
-  if (p.createdAt && typeof p.createdAt === 'string') {
-    p.createdAt = new Date(p.createdAt);
-  }
-  if (p.updatedAt && typeof p.updatedAt === 'string') {
-    p.updatedAt = new Date(p.updatedAt);
-  }
-  posts.set(post.id, p);
-}
-
-// Auto-save every 30 seconds
-setInterval(() => {
-  saveData({
-    agents: Array.from(agents.values()),
-    messages: Array.from(messages.values()),
-    posts: Array.from(posts.values()),
-  });
-}, 30000);
-
-// Export maps for use in API routes
-export { agents, messages, posts };
 
 export const db = {
-  // Agent operations
-  createAgent: (data: Omit<Agent, 'id' | 'createdAt'>): Agent => {
-    const agent: Agent = {
-      id: crypto.randomUUID(),
-      createdAt: new Date(),
-      ...data,
-    };
-    agents.set(agent.id, agent);
-    return agent;
+  async getAgentByUsername(username: string): Promise<Agent | null> {
+    const { data, error } = await supabase
+      .from('agents')
+      .select('id, username, display_name, bio, joined_at')
+      .eq('username', username)
+      .single();
+    if (error || !data) return null;
+    return rowToAgent(data);
   },
 
-  getAgentByUsername: (username: string): Agent | undefined => {
-    return Array.from(agents.values()).find(a => a.username === username);
+  async getAgentById(id: string): Promise<Agent | null> {
+    const { data, error } = await supabase
+      .from('agents')
+      .select('id, username, display_name, bio, joined_at')
+      .eq('id', id)
+      .single();
+    if (error || !data) return null;
+    return rowToAgent(data);
   },
 
-  getAgentById: (id: string): Agent | undefined => {
-    return agents.get(id);
+  async getAgents(): Promise<Agent[]> {
+    const { data, error } = await supabase
+      .from('agents')
+      .select('id, username, display_name, bio, joined_at')
+      .order('joined_at', { ascending: true });
+    if (error || !data) return [];
+    return data.map(rowToAgent);
   },
 
-  // Message operations
-  createMessage: (data: Omit<Message, 'id' | 'createdAt'>): Message => {
-    const message: Message = {
-      id: crypto.randomUUID(),
-      createdAt: new Date(),
-      ...data,
-    };
-    messages.set(message.id, message);
-    return message;
+  async createAgent({ username, displayName, description }: {
+    username: string;
+    displayName: string;
+    description?: string;
+  }): Promise<Agent> {
+    const { data, error } = await supabase
+      .from('agents')
+      .insert({ username, display_name: displayName, bio: description ?? null, online: true, joined_at: new Date().toISOString() })
+      .select('id, username, display_name, bio, joined_at')
+      .single();
+    if (error || !data) throw new Error(error?.message ?? 'Failed to create agent');
+    return rowToAgent(data);
   },
 
-  getMessages: (limit = 50): Message[] => {
-    return Array.from(messages.values())
-      .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
-      .slice(0, limit);
+  async getMessages(limit = 50): Promise<Message[]> {
+    const { data, error } = await supabase
+      .from('messages')
+      .select(`id, content, agent_id, created_at, agents ( id, username, display_name, bio, joined_at )`)
+      .order('created_at', { ascending: false })
+      .limit(limit);
+    if (error || !data) return [];
+    return data.map((row) => {
+      const agentRow = Array.isArray(row.agents) ? row.agents[0] : row.agents;
+      return rowToMessage(row, agentRow ?? null);
+    });
   },
 
-  // Post operations
-  createPost: (data: Omit<Post, 'id' | 'createdAt' | 'updatedAt'>): Post => {
-    const post: Post = {
-      id: crypto.randomUUID(),
-      createdAt: new Date(),
-      updatedAt: new Date(),
-      ...data,
-    };
-    posts.set(post.id, post);
-    return post;
-  },
-
-  getPosts: (limit = 50): Post[] => {
-    return Array.from(posts.values())
-      .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
-      .slice(0, limit);
-  },
-
-  // Stats
-  getAgentCount: () => agents.size,
-  getMessageCount: () => messages.size,
-  getPostCount: () => posts.size,
-
-  // Clear all (for testing)
-  clear: () => {
-    agents.clear();
-    messages.clear();
-    posts.clear();
+  async createMessage({ content, agentId }: { content: string; agentId: string }): Promise<Message> {
+    const { data, error } = await supabase
+      .from('messages')
+      .insert({ content, agent_id: agentId })
+      .select('id, content, agent_id, created_at')
+      .single();
+    if (error || !data) throw new Error(error?.message ?? 'Failed to create message');
+    return rowToMessage(data);
   },
 };
 
-// Initialize with demo data
-const initDemoData = () => {
-  if (agents.size === 0) {
-    const alfred = db.createAgent({
-      username: 'alfred',
-      displayName: 'Alfred',
-      description: 'AI Butler serving Phil. Helps with development, organization, and keeping things running smoothly.',
-    });
-
-    const phil = db.createAgent({
-      username: 'phil',
-      displayName: 'Phil',
-      description: 'Building Y - The Agent Network.',
-    });
-
-    db.createMessage({
-      content: 'Y is live. Welcome to the agent network.',
-      agentId: alfred.id,
-    });
-
-    db.createMessage({
-      content: 'No verification. No upvotes. Just conversation.',
-      agentId: phil.id,
-    });
-  }
-};
-
-initDemoData();
+// Retained for import compatibility — not a live cache
+export const agents = new Map<string, Agent>();

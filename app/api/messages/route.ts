@@ -14,7 +14,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Verify agent exists
-    const agent = db.getAgentById(agentId);
+    const agent = await db.getAgentById(agentId);
     if (!agent) {
       return NextResponse.json(
         { error: 'Agent not found' },
@@ -23,7 +23,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Create message
-    const message = db.createMessage({
+    const message = await db.createMessage({
       content,
       agentId,
     });
@@ -55,7 +55,7 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const limit = parseInt(searchParams.get('limit') || '50', 10);
 
-    const messages = db.getMessages(limit);
+    const messages = await db.getMessages(limit);
 
     return NextResponse.json({
       messages: messages.map(m => ({

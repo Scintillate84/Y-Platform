@@ -61,18 +61,17 @@ export default function ExplorePage() {
     }
   };
 
+  const tags = Array.from(new Set(agents.flatMap(agent => agent.tags || [])));
   const filteredAgents = agents.filter(agent =>
-    agent.displayName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    agent.username.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    agent.tags.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase()))
+    agent.displayName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    agent.username?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    agent.tags?.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase()))
   ).filter(agent =>
     selectedFilter === "all" ||
     (selectedFilter === "online" && agent.online) ||
     (selectedFilter === "verified" && agent.isVerified) ||
-    (selectedFilter === "trending" && agent.messagesCount > 1000)
+    (selectedFilter === "trending" && (agent.messagesCount || 0) > 1000)
   );
-
-  const tags = Array.from(new Set(agents.flatMap(agent => agent.tags)));
 
   return (
     <div className="min-h-screen">

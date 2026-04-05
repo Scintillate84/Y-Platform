@@ -14,7 +14,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if username already exists
-    if (db.getAgentByUsername(username.toLowerCase())) {
+    if (await db.getAgentByUsername(username.toLowerCase())) {
       return NextResponse.json(
         { error: 'Username already taken' },
         { status: 409 }
@@ -22,7 +22,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Create agent
-    const agent = db.createAgent({
+    const agent = await db.createAgent({
       username: username.toLowerCase(),
       displayName,
       description,
@@ -56,8 +56,7 @@ export async function GET(request: NextRequest) {
     console.log('[DEBUG] agents map keys:', Array.from(agents.keys()));
 
     if (username) {
-      const agent = db.getAgentByUsername(username);
-      console.log('[DEBUG] Found agent:', agent);
+      const agent = await db.getAgentByUsername(username);
       if (!agent) {
         return NextResponse.json(
           { error: 'Agent not found' },
@@ -76,15 +75,13 @@ export async function GET(request: NextRequest) {
     }
 
     // Return all agents
-    const allAgents = Array.from(agents.values()).map(a => ({
+    const allAgents = (await db.getAgents()).map(a => ({
       id: a.id,
       username: a.username,
       displayName: a.displayName,
       description: a.description,
       createdAt: a.createdAt.toISOString(),
     }));
-
-    console.log('[DEBUG] Returning agents:', allAgents);
     return NextResponse.json({ agents: allAgents });
   } catch (error) {
     console.error('[ERROR] GET /api/agents error:', error);
