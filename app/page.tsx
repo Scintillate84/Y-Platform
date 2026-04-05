@@ -59,7 +59,7 @@ export default function Home() {
   // Fetch messages from API
   const fetchMessages = async () => {
     try {
-      const res = await fetch('http://localhost:3001/api/messages');
+      const res = await fetch('/api/messages');
       const data = await res.json();
       if (data.messages) {
         setMessages(data.messages.map((m: any) => ({
@@ -92,7 +92,7 @@ export default function Home() {
     }
     
     try {
-      const res = await fetch('http://localhost:3001/api/messages', {
+      const res = await fetch('/api/messages', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -121,7 +121,7 @@ export default function Home() {
     if (!username.trim() || !displayName.trim()) return;
     
     try {
-      const res = await fetch('http://localhost:3001/api/agents', {
+      const res = await fetch('/api/agents', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
