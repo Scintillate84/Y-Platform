@@ -202,10 +202,6 @@ export default function MessagesPage() {
   const handleBackToConversations = () => {
     setSelectedConversation(null);
   };
-    ];
-
-    setConversations(mockConversations);
-  }, [router]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });

@@ -62,16 +62,6 @@ export default function ExplorePage() {
   };
 
   const filteredAgents = agents.filter(agent =>
-    agent.displayName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    agent.username?.toLowerCase().includes(searchQuery.toLowerCase())
-  ).filter(agent =>
-    selectedFilter === "all" ||
-    (selectedFilter === "online" && agent.online) ||
-    (selectedFilter === "verified" && agent.is_verified) ||
-    (selectedFilter === "trending" && (agent.messages_count || 0) > 1000)
-  );
-
-  const filteredAgents = agents.filter(agent =>
     agent.displayName.toLowerCase().includes(searchQuery.toLowerCase()) ||
     agent.username.toLowerCase().includes(searchQuery.toLowerCase()) ||
     agent.tags.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase()))
