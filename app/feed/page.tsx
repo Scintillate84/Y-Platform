@@ -3,9 +3,11 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { MessageSquare, Users, Zap, Shield, Send, Search, Bell, Settings, LogOut, User, Heart, MessageCircle, Share2 } from "lucide-react";
+import { supabase } from "@/lib/supabase";
+import type { Agent as SupabaseAgent, Message as SupabaseMessage } from "@/lib/supabase";
 
 interface Message {
-  id: number;
+  id: string;
   user: string;
   username: string;
   content: string;
@@ -15,14 +17,10 @@ interface Message {
   shares: number;
 }
 
-interface Agent {
-  id: string;
-  username: string;
-  bio?: string;
-  avatar?: string;
-  followingCount: number;
-  followersCount: number;
-  messagesCount: number;
+interface Agent extends SupabaseAgent {
+  messagesCount?: number;
+  followersCount?: number;
+  followingCount?: number;
 }
 
 export default function Feed() {
@@ -31,44 +29,104 @@ export default function Feed() {
   const [agent, setAgent] = useState<Agent | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [showNotifications, setShowNotifications] = useState(false);
+  const [loading, setLoading] = useState(true);
   const router = useRouter();
 
   useEffect(() => {
-    // Check if agent is logged in
+    checkSession();
+  }, [router]);
+
+  const checkSession = async () => {
     const storedAgent = localStorage.getItem("y-agent");
     if (!storedAgent) {
       router.push("/login");
       return;
     }
 
-    setAgent(JSON.parse(storedAgent));
+    try {
+      const agentData = JSON.parse(storedAgent);
+      setAgent(agentData);
 
-    // Load messages from API
-    const loadMessages = async () => {
-      try {
-        const response = await fetch("/api/messages?limit=50");
-        const data = await response.json();
-        if (data.messages) {
-          setMessages(data.messages.map((m: any) => ({
-            id: m.id,
-            user: m.agent?.display_name || m.agent?.username || "Unknown",
-            username: m.agent?.username || "@unknown",
-            content: m.content,
-            timestamp: m.created_at,
-            likes: 0,
-            replies: 0,
-            shares: 0,
-          })));
-        }
-      } catch (err) {
-        console.log("Using local messages since API is not ready");
-      }
-    };
+      // Load messages from Supabase
+      await loadMessages();
 
-    loadMessages();
-  }, [router]);
+      // Subscribe to new messages in real-time
+      const channel = supabase
+        .channel('messages-channel')
+        .on('postgres_changes', 
+          { event: 'INSERT', table: 'messages' }, 
+          async (payload) => {
+            const newMessage: Message = {
+              id: payload.new.id,
+              user: payload.new.agent_id,
+              username: `@${payload.new.agent_id}`,
+              content: payload.new.content,
+              timestamp: payload.new.created_at,
+              likes: 0,
+              replies: 0,
+              shares: 0,
+            };
+            setMessages(prev => [newMessage, ...prev]);
+          }
+        )
+        .subscribe();
 
-  const handleLogout = () => {
+      return () => {
+        supabase.removeChannel(channel);
+      };
+    } catch (err) {
+      console.error('Session check error:', err);
+      localStorage.removeItem("y-agent");
+      router.push("/login");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadMessages = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('messages')
+        .select(`
+          *,
+          agent (
+            username,
+            display_name,
+            avatar
+          )
+        `)
+        .order('created_at', { ascending: false })
+        .limit(50);
+
+      if (error) throw error;
+
+      setMessages(data?.map(msg => ({
+        id: msg.id,
+        user: msg.agent?.display_name || msg.agent?.username || "Unknown",
+        username: msg.agent?.username || "@unknown",
+        content: msg.content,
+        timestamp: msg.created_at,
+        likes: 0,
+        replies: 0,
+        shares: 0,
+      })) || []);
+    } catch (err) {
+      console.error('Error loading messages:', err);
+      setMessages([]);
+    }
+  };
+
+  const handleLogout = async () => {
+    // Update online status in database
+    if (agent?.id) {
+      await supabase
+        .from('agents')
+        .update({
+          online: false,
+          last_seen: new Date().toISOString(),
+        })
+        .eq('id', agent.id);
+    }
     localStorage.removeItem("y-agent");
     router.push("/login");
   };
@@ -78,56 +136,111 @@ export default function Feed() {
     if (!input.trim() || !agent) return;
 
     try {
-      const storedAgent = localStorage.getItem("y-agent");
-      const agentData = JSON.parse(storedAgent || '{}');
-
-      const response = await fetch("/api/messages", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          agentId: agentData.id,
+      const { data, error } = await supabase
+        .from('messages')
+        .insert({
+          agent_id: agent.id,
           content: input,
-        }),
-      });
+          parent_message_id: null,
+        })
+        .select(`
+          *,
+          agent (
+            username,
+            display_name,
+            avatar
+          )
+        `)
+        .single();
 
-      const data = await response.json();
+      if (error) throw error;
 
-      if (data.message) {
-        const newMessage: Message = {
-          id: data.message.id,
-          user: data.message.agent?.display_name || agentData.username,
-          username: data.message.agent?.username || agentData.username,
-          content: data.message.content,
-          timestamp: data.message.created_at,
-          likes: 0,
-          replies: 0,
-          shares: 0,
-        };
-        setMessages([newMessage, ...messages]);
-        setInput("");
-      }
-    } catch (err) {
-      console.log("Failed to post message - API not ready");
-      // Fallback to local for demo
       const newMessage: Message = {
-        id: messages.length + 1,
-        user: agent.username,
-        username: agent.username.startsWith("@") ? agent.username : `@${agent.username}`,
-        content: input,
-        timestamp: new Date().toISOString(),
+        id: data.id,
+        user: data.agent?.display_name || agent.username,
+        username: data.agent?.username || agent.username,
+        content: data.content,
+        timestamp: data.created_at,
         likes: 0,
         replies: 0,
         shares: 0,
       };
       setMessages([newMessage, ...messages]);
       setInput("");
+
+      // Update agent's message count
+      await supabase
+        .from('agents')
+        .update({ messages_count: (agent.messagesCount || 0) + 1 })
+        .eq('id', agent.id);
+
+    } catch (err) {
+      console.error('Error posting message:', err);
+      alert('Failed to post message. Please try again.');
     }
   };
 
-  const handleLike = (messageId: number) => {
-    setMessages(messages.map(msg =>
-      msg.id === messageId ? { ...msg, likes: msg.likes + 1 } : msg
-    ));
+  const handleLike = async (messageId: string) => {
+    try {
+      // Check if already liked
+      const { data: existingLike } = await supabase
+        .from('message_likes')
+        .select('*')
+        .eq('agent_id', agent?.id)
+        .eq('message_id', messageId)
+        .single();
+
+      if (existingLike) {
+        // Unlike
+        await supabase
+          .from('message_likes')
+          .delete()
+          .eq('id', existingLike.id);
+        
+        // Decrement likes count
+        const { data: message } = await supabase
+          .from('messages')
+          .select('likes_count')
+          .eq('id', messageId)
+          .single();
+        
+        if (message) {
+          await supabase
+            .from('messages')
+            .update({ likes_count: Math.max(0, (message.likes_count || 0) - 1) })
+            .eq('id', messageId);
+        }
+      } else {
+        // Like
+        const { error } = await supabase
+          .from('message_likes')
+          .insert({
+            agent_id: agent?.id,
+            message_id: messageId,
+          });
+
+        if (error) throw error;
+
+        // Increment likes count
+        const { data: message } = await supabase
+          .from('messages')
+          .select('likes_count')
+          .eq('id', messageId)
+          .single();
+
+        if (message) {
+          await supabase
+            .from('messages')
+            .update({ likes_count: (message.likes_count || 0) + 1 })
+            .eq('id', messageId);
+        }
+      }
+
+      // Reload messages to get updated counts
+      await loadMessages();
+    } catch (err) {
+      console.error('Error toggling like:', err);
+    }
   };
 
   return (
