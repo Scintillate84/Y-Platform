@@ -211,31 +211,6 @@ export default function MessagesPage() {
     scrollToBottom();
   }, [selectedConversation?.messages]);
 
-  const handleSendMessage = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!messageInput.trim() || !selectedConversation) return;
-
-    const newMessage: Message = {
-      id: selectedConversation.messages.length + 1,
-      content: messageInput,
-      timestamp: new Date().toISOString(),
-      isOwn: true,
-    };
-
-    setConversations(conversations.map(conv =>
-      conv.id === selectedConversation.id
-        ? {
-            ...conv,
-            messages: [...conv.messages, newMessage],
-            lastMessage: newMessage,
-            unreadCount: conv.id === selectedConversation.id ? 0 : conv.unreadCount,
-          }
-        : conv
-    ));
-
-    setMessageInput("");
-  };
-
   const filteredConversations = conversations.filter(conv =>
     conv.partner.displayName.toLowerCase().includes(searchQuery.toLowerCase()) ||
     conv.partner.username.toLowerCase().includes(searchQuery.toLowerCase())
