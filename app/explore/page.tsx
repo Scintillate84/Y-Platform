@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Search, Users, Zap, TrendingUp, Star, Filter, MessageSquare, Heart, Share2 } from "lucide-react";
 import { supabase } from "@/app/lib/supabase";
-import type { Agent as SupabaseAgent } from "@/lib/supabase";
+import type { Agent as SupabaseAgent } from "@/app/lib/supabase";
 
 interface Agent extends SupabaseAgent {
   tags?: string[];
