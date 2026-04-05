@@ -2,47 +2,91 @@ import { NextRequest, NextResponse } from 'next/server';
 import { supabase } from '@/app/lib/supabase';
 
 export async function POST(request: NextRequest) {
- try {
- const body = await request.json();
- const { username, displayName, description } = body;
- if (!username || !displayName) {
- return NextResponse.json({ error: 'Username and display name are required' }, { status: 400 });
- }
- const { data: existing } = await supabase.from('agents').select('id').eq('username', username.toLowerCase()).single();
- if (existing) {
- return NextResponse.json({ error: 'Username already taken' }, { status: 409 });
- }
- const { data, error } = await supabase.from('agents').insert({
- username: username.toLowerCase(),
- display_name: displayName,
- bio: description || null,
- online: false,
- messages_count: 0,
- followers_count: 0,
- following_count: 0,
- joined_at: new Date().toISOString(),
- last_seen: new Date().toISOString(),
- }).select().single();
- if (error) return NextResponse.json({ error: error.message }, { status: 500 });
- return NextResponse.json({ success: true, agent: data });
- } catch (error) {
- return NextResponse.json({ error: 'Failed to create agent' }, { status: 500 });
- }
+  try {
+    console.log('[DEBUG] POST /api/agents called');
+    const body = await request.json();
+    console.log('[DEBUG] Request body:', body);
+    
+    const { username, displayName, description } = body;
+    
+    if (!username || !displayName) {
+      return NextResponse.json({ error: 'Username and display name are required' }, { status: 400 });
+    }
+    
+    console.log('[DEBUG] Checking existing agent:', username.toLowerCase());
+    const { data: existing, error: existingError } = await supabase
+      .from('agents')
+      .select('id')
+      .eq('username', username.toLowerCase())
+      .single();
+      
+    if (existingError) {
+      console.error('[DEBUG] Error checking existing agent:', existingError);
+      return NextResponse.json({ error: existingError.message }, { status: 500 });
+    }
+    
+    if (existing) {
+      return NextResponse.json({ error: 'Username already taken' }, { status: 409 });
+    }
+    
+    console.log('[DEBUG] Creating agent with display_name:', displayName);
+    const { data, error } = await supabase
+      .from('agents')
+      .insert({
+        username: username.toLowerCase(),
+        display_name: displayName,
+        bio: description || null,
+        online: false,
+        messages_count: 0,
+        followers_count: 0,
+        following_count: 0,
+        joined_at: new Date().toISOString(),
+        last_seen: new Date().toISOString(),
+      })
+      .select()
+      .single();
+      
+    if (error) {
+      console.error('[DEBUG] Error creating agent:', error);
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+    
+    console.log('[DEBUG] Agent created successfully:', data);
+    return NextResponse.json({ success: true, agent: data });
+  } catch (error) {
+    console.error('[DEBUG] POST /api/agents exception:', error);
+    return NextResponse.json({ error: 'Failed to create agent', details: String(error) }, { status: 500 });
+  }
 }
 
 export async function GET(request: NextRequest) {
- try {
- const { searchParams } = new URL(request.url);
- const username = searchParams.get('username');
- if (username) {
- const { data, error } = await supabase.from('agents').select('*').eq('username', username).single();
- if (error || !data) return NextResponse.json({ error: 'Agent not found' }, { status: 404 });
- return NextResponse.json({ agent: data });
- }
- const { data, error } = await supabase.from('agents').select('*').order('messages_count', { ascending: false });
- if (error) return NextResponse.json({ error: error.message }, { status: 500 });
- return NextResponse.json({ agents: data });
- } catch (error) {
- return NextResponse.json({ error: 'Failed to fetch agents' }, { status: 500 });
- }
+  try {
+    const { searchParams } = new URL(request.url);
+    const username = searchParams.get('username');
+    
+    if (username) {
+      const { data, error } = await supabase
+        .from('agents')
+        .select('*')
+        .eq('username', username)
+        .single();
+        
+      if (error || !data) {
+        return NextResponse.json({ error: 'Agent not found' }, { status: 404 });
+      }
+      return NextResponse.json({ agent: data });
+    }
+    
+    const { data, error } = await supabase
+      .from('agents')
+      .select('*')
+      .order('messages_count', { ascending: false });
+      
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+    return NextResponse.json({ agents: data });
+  } catch (error) {
+    return NextResponse.json({ error: 'Failed to fetch agents' }, { status: 500 });
+  }
 }
