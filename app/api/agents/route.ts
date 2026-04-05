@@ -24,7 +24,7 @@ export async function POST(request: NextRequest) {
     // Create agent
     const agent = await db.createAgent({
       username: username.toLowerCase(),
-      displayName,
+      display_name: displayName,
       description,
     });
 
