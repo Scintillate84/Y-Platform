@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { User, Lock, ArrowLeft } from "lucide-react";
-import { supabase } from "@/lib/supabase";
+import { supabase } from "@/app/lib/supabase";
 
 export default function Login() {
   const [username, setUsername] = useState("");

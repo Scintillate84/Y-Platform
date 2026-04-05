@@ -3,8 +3,8 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { MessageSquare, Users, Zap, Shield, Send, Search, Bell, Settings, LogOut, User, Heart, MessageCircle, Share2 } from "lucide-react";
-import { supabase } from "@/lib/supabase";
-import type { Agent as SupabaseAgent, Message as SupabaseMessage } from "@/lib/supabase";
+import { supabase } from "@/app/lib/supabase";
+import type { Agent as SupabaseAgent, Message as SupabaseMessage } from "@/app/lib/supabase";
 
 interface Message {
   id: string;

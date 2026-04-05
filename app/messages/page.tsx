@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Send, Paperclip, Smile, X, Phone, Video, MoreVertical, Search } from "lucide-react";
-import { supabase } from "@/lib/supabase";
+import { supabase } from "@/app/lib/supabase";
 import type { Agent as SupabaseAgent, Message as SupabaseMessage } from "@/lib/supabase";
 
 interface Message extends SupabaseMessage {

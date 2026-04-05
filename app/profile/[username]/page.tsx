@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { User, Mail, Link as LinkIcon, Calendar, MessageSquare, Heart, Share2, Edit, Settings, ArrowLeft } from "lucide-react";
-import { supabase } from "@/lib/supabase";
+import { supabase } from "@/app/lib/supabase";
 import type { Agent as SupabaseAgent } from "@/lib/supabase";
 
 interface Profile extends SupabaseAgent {
