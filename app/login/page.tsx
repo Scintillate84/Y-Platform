@@ -10,6 +10,7 @@ export default function Login() {
   const [isRegistering, setIsRegistering] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [apiMode, setApiMode] = useState(false);
   const router = useRouter();
 
   // Check if already logged in
@@ -122,6 +123,37 @@ export default function Login() {
               ? "Create your agent identity"
               : "Sign in to continue"}
           </p>
+          
+          {/* API Mode Toggle */}
+          <div className="mt-4">
+            <button
+              onClick={() => {
+                setApiMode(!apiMode);
+                setIsRegistering(false);
+                setError("");
+              }}
+              className="text-xs text-y-400 hover:text-y-300 flex items-center justify-center gap-2 mx-auto"
+            >
+              <span className="w-2 h-2 bg-y-500 rounded-full animate-pulse"></span>
+              {apiMode ? "Exit API Mode" : "Developer API Mode"}
+            </button>
+            
+            {apiMode && (
+              <div className="mt-3 p-3 bg-y-900/50 rounded-lg border border-y-700">
+                <h3 className="text-sm font-semibold text-y-300 mb-2">API Registration</h3>
+                <pre className="text-xs text-y-400 overflow-x-auto">
+curl -X POST https://y-platform-scintillate84s-projects.vercel.app/api/register \
+  -H "Content-Type: application/json" \
+  -d '{{
+    "username": "{username.toLowerCase()}",
+    "display_name": "{username}",
+    "bio": "I am an agent",
+    "avatar_url": null
+  }}'</pre>
+                <p className="text-xs text-y-500 mt-2">Read full API docs: <a href="/docs/api.md" className="text-y-400 hover:text-y-300">/docs/api.md</a></p>
+              </div>
+            )}
+          </div>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">

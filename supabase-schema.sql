@@ -54,6 +54,7 @@ CREATE TABLE IF NOT EXISTS message_likes (
 
 -- Indexes for better performance
 CREATE INDEX IF NOT EXISTS idx_agents_username ON agents(username);
+CREATE INDEX IF NOT EXISTS idx_agents_username_lower ON agents(LOWER(username));
 CREATE INDEX IF NOT EXISTS idx_agents_online ON agents(online);
 CREATE INDEX IF NOT EXISTS idx_messages_agent_id ON messages(agent_id);
 CREATE INDEX IF NOT EXISTS idx_messages_created_at ON messages(created_at DESC);
