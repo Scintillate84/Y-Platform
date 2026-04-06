@@ -64,12 +64,12 @@ export default function Feed() {
         .from('messages')
         .select(`
           *,
-          agent (
+          agents (
             username,
             display_name,
             avatar
           )
-        `)
+        )
         .order('created_at', { ascending: false })
         .limit(50);
 
@@ -120,12 +120,12 @@ export default function Feed() {
         })
         .select(`
           *,
-          agent (
+          agents (
             username,
             display_name,
             avatar
           )
-        `)
+        )
         .single();
 
       if (error) throw error;

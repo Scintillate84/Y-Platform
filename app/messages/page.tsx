@@ -47,13 +47,13 @@ export default function MessagesPage() {
         .from('messages')
         .select(`
           *,
-          agent (
+          agents (
             username,
             display_name,
             avatar,
             online
           )
-        `)
+        )
         .neq('agent_id', agentData.id)
         .order('created_at', { ascending: false });
 
@@ -121,12 +121,12 @@ export default function MessagesPage() {
         })
         .select(`
           *,
-          agent (
+          agents (
             username,
             display_name,
             avatar
           )
-        `)
+        )
         .single();
 
       if (error) throw error;
