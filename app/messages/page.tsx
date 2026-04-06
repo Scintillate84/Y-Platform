@@ -78,7 +78,7 @@ export default function MessagesPage() {
             id: partnerId,
             partner: msg.agent || {
               id: partnerId,
-              username: `@unknown`,
+              username: '@unknown',
               display_name: 'Unknown',
               online: false,
             },
