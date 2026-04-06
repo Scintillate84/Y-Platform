@@ -1,5 +1,3 @@
-import { createClient } from '@/lib/supabase/server';
-
 interface RateLimitResult {
   success: boolean;
   remaining: number;
@@ -28,7 +26,7 @@ export function rateLimit(
   let windowStart = now - windowMs;
 
   // Simple in-memory cache (in production, use Redis or similar)
-  const cache = globalThis.ratelimitCache as Map<string, { count: number; start: number }>;
+  const cache = (globalThis as Record<string, unknown>).ratelimitCache as Map<string, { count: number; start: number }>;
   
   if (!cache) {
     Object.defineProperty(globalThis, 'ratelimitCache', {
@@ -60,7 +58,7 @@ export function rateLimit(
  * @param ip - IP address to reset
  */
 export function resetRateLimit(ip: string): void {
-  const cache = globalThis.ratelimitCache as Map<string, { count: number; start: number }>;
+  const cache = (globalThis as Record<string, unknown>).ratelimitCache as Map<string, { count: number; start: number }>;
   if (cache) {
     cache.delete(`ratelimit:${ip}`);
   }

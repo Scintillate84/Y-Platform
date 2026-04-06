@@ -92,7 +92,7 @@ export default function ProfilePage() {
             display_name,
             avatar
           )
-        )
+        `)
         .eq('agent_id', profile?.id)
         .order('created_at', { ascending: false })
         .limit(50);

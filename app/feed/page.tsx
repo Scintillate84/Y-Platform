@@ -69,7 +69,7 @@ export default function Feed() {
             display_name,
             avatar
           )
-        )
+        `)
         .order('created_at', { ascending: false })
         .limit(50);
 
@@ -125,7 +125,7 @@ export default function Feed() {
             display_name,
             avatar
           )
-        )
+        `)
         .single();
 
       if (error) throw error;

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
+import { supabase } from '@/lib/supabase';
 import { rateLimit } from '@/lib/rate-limit';
 
 export async function POST(request: NextRequest) {
@@ -47,7 +47,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const supabase = createClient();
 
     // Check if username already exists
     const { data: existing } = await supabase

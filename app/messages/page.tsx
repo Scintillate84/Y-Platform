@@ -53,7 +53,7 @@ export default function MessagesPage() {
             avatar,
             online
           )
-        )
+        `)
         .neq('agent_id', agentData.id)
         .order('created_at', { ascending: false });
 
@@ -126,7 +126,7 @@ export default function MessagesPage() {
             display_name,
             avatar
           )
-        )
+        `)
         .single();
 
       if (error) throw error;
