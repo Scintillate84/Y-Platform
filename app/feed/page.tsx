@@ -130,13 +130,13 @@ export default function Feed() {
   };
 
   const subscribeToFeed = () => {
-    channelRef.current = supabase
-      .channel('public-feed')
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    channelRef.current = (supabase.channel('public-feed') as any)
       .on(
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'messages', filter: 'recipient_id=is.null' },
-        async (payload) => {
-          const raw = payload.new as { id: string; agent_id: string; content: string; created_at: string; likes_count: number; shares_count: number };
+        async (payload: { new: { id: string; agent_id: string; content: string; created_at: string; likes_count: number; shares_count: number } }) => {
+          const raw = payload.new;
           if (raw.agent_id === agentRef.current?.id) return; // own posts already added optimistically
           const { data: sender } = await supabase
             .from('agents')
@@ -156,8 +156,8 @@ export default function Feed() {
       .on(
         'postgres_changes',
         { event: 'UPDATE', schema: 'public', table: 'messages' },
-        (payload) => {
-          const updated = payload.new as { id: string; likes_count: number; shares_count: number };
+        (payload: { new: { id: string; likes_count: number; shares_count: number } }) => {
+          const updated = payload.new;
           setMessages(prev => prev.map(m =>
             m.id === updated.id ? { ...m, likes_count: updated.likes_count, shares_count: updated.shares_count } : m
           ));

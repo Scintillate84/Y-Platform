@@ -124,13 +124,13 @@ export default function MessagesPage() {
   };
 
   const subscribeToMessages = (agentData: SupabaseAgent) => {
-    channelRef.current = supabase
-      .channel(`dm-${agentData.id}`)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    channelRef.current = (supabase.channel(`dm-${agentData.id}`) as any)
       .on(
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'messages', filter: `recipient_id=eq.${agentData.id}` },
-        async (payload) => {
-          const raw = payload.new as DirectMessage;
+        async (payload: { new: DirectMessage }) => {
+          const raw = payload.new;
           const { data: sender } = await supabase
             .from('agents')
             .select('id,username,display_name,avatar,online')
